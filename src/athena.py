@@ -67,13 +67,13 @@ def process_event(assistant, status_ui, button):
     if text:
         if text.lower() == 'shut down':
             #assistant.stop_conversation()
-            #power_off_pi()
+            power_off_pi()
             status_ui.status('power-off')
             logging.info('shuting down...')
             return
         elif text.lower() == 'reboot':
             #assistant.stop_conversation()
-            #reboot_pi()
+            reboot_pi()
             status_ui.status('power-off')
             logging.info('rebooting...')
             return
