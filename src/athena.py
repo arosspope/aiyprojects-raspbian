@@ -18,6 +18,7 @@
 import logging
 import subprocess
 import sys
+import threading
 
 #import os
 from os import listdir
@@ -30,8 +31,8 @@ import aiy.voicehat
 logging.basicConfig(
     level=logging.INFO,
     format="[%(asctime)s] %(levelname)s:%(name)s:%(message)s"
-)
-
+)   
+    
 def power_off_pi():
     aiy.audio.say('Good bye!')
     subprocess.call('sudo shutdown now', shell=True)
@@ -72,13 +73,7 @@ def list_stories():
     for s in stories:
         aiy.audio.say('%s' % splitext(s)[0])
 
-stop_story = False
-def stop_story_handler(channel):
-    global stop_story
-    stop_story = True
-
-def tell_story(text, button):
-    global stop_story
+def tell_story(text):
     story = text.lower().replace('tell story', '', 1).strip().replace(" ", "-")
     stories = [f for f in listdir('stories') if isfile(join('stories', f))] # Get available stories
     stories = [splitext(x)[0] for x in stories] # Remove the '.txt'
@@ -90,12 +85,11 @@ def tell_story(text, button):
         aiy.audio.say('Sorry, I dont know that one')
         list_stories()
     else:
-        button.on_press(stop_story_handler)
+        # For better or worse, the story will play out until finished
+        # TODO: Adopt a multi-threaded approach, where a seperate thread watches for a button press
         with open('stories/%s.txt' % story, 'r') as f:
             for l in f.readlines():
                 aiy.audio.say(l)
-                if stop_story:
-                    break
 
 def process_event(assistant, status_ui, button):
     text, audio = assistant.recognize()
@@ -126,7 +120,7 @@ def process_event(assistant, status_ui, button):
             list_stories()
             return
         elif text.lower().startswith('tell story'):
-            tell_story(text, button)
+            tell_story(text)
             return
     
     if audio:
