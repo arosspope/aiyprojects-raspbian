@@ -19,6 +19,10 @@ import logging
 import subprocess
 import sys
 
+#import os
+from os import listdir
+from os.path import isfile, join, splitext
+
 import aiy.assistant.grpc
 import aiy.audio
 import aiy.voicehat
@@ -61,7 +65,38 @@ def set_mood(button):
     subprocess.call("mpc clear; mpc add http://77.235.42.90:80/; mpc play", shell=True)
     button.wait_for_press() # Assistant blocked while streaming
     pkill = subprocess.call("mpc stop", shell=True)
+
+def list_stories():
+    aiy.audio.say('The available stories include')
+    stories = [f for f in listdir('stories') if isfile(join('stories', f))]
+    for s in stories:
+        aiy.audio.say('%s' % splitext(s)[0])
+
+stop_story = False
+def stop_story_handler(channel):
+    global stop_story
+    stop_story = True
+
+def tell_story(text, button):
+    global stop_story
+    story = text.lower().replace('tell story', '', 1).strip().replace(" ", "-")
+    stories = [f for f in listdir('stories') if isfile(join('stories', f))] # Get available stories
+    stories = [splitext(x)[0] for x in stories] # Remove the '.txt'
     
+    logging.info('searching for: %s' % story)
+    stop_story = False
+    if story not in stories:
+        logging.warning('story not found')
+        aiy.audio.say('Sorry, I dont know that one')
+        list_stories()
+    else:
+        button.on_press(stop_story_handler)
+        with open('stories/%s.txt' % story, 'r') as f:
+            for l in f.readlines():
+                aiy.audio.say(l)
+                if stop_story:
+                    break
+
 def process_event(assistant, status_ui, button):
     text, audio = assistant.recognize()
     if text:
@@ -86,6 +121,12 @@ def process_event(assistant, status_ui, button):
             return
         elif text.lower() == 'set the mood':
             set_mood(button)
+            return
+        elif text.lower() == 'list stories':
+            list_stories()
+            return
+        elif text.lower().startswith('tell story'):
+            tell_story(text, button)
             return
     
     if audio:
